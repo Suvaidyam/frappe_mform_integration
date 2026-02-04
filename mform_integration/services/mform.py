@@ -15,5 +15,5 @@ class MForm:
         ]
         payload = {"data":data}
         print("payload:",payload)
-        url = f"/admin-service/specific-question-update/{response_id}?formId={form_id}&bypassEncryption=true"
+        url = f"/admin-service/specific-question-update/{response_id}?formId={form_id}&bypassEncryption=true&byPassValidation=true"
         return self.client.post(url, json=payload)
