@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-18 12:51:17.863302",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "module",
+  "column_break_wwnv",
+  "module_interface"
+ ],
+ "fields": [
+  {
+   "fieldname": "module",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Module",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_wwnv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "module_interface",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Module Interface",
+   "options": "Custom HTML Block",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-18 12:53:17.970570",
+ "modified_by": "Administrator",
+ "module": "Mform Integration",
+ "name": "Module Integrations",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -40,7 +40,12 @@ app_license = "mit"
 # webform_include_css = {"doctype": "public/css/doctype.css"}
 
 # include js in page
-# page_js = {"page" : "public/js/file.js"}
+page_js = {
+	"module-list": "public/utils.js",
+	"list-view": "public/utils.js",
+	"form-list": "public/utils.js",
+	"form-dashboard": "public/utils.js",
+}
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
@@ -91,7 +96,7 @@ app_license = "mit"
 # Uninstallation
 # ------------
 
-# before_uninstall = "mform_integration.uninstall.before_uninstall"
+before_uninstall = "mform_integration.uninstall.before_uninstall"
 # after_uninstall = "mform_integration.uninstall.after_uninstall"
 
 # Integration Setup
@@ -244,4 +249,3 @@ app_license = "mit"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-
