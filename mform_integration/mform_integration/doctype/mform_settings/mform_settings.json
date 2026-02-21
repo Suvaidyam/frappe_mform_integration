@@ -8,10 +8,15 @@
   "creds_section",
   "step_1_column",
   "url",
+  "column_break_vkyx",
   "token_based",
+  "section_break_cfya",
   "token",
+  "section_break_enhy",
   "client_id",
+  "column_break_leww",
   "client_secret",
+  "section_break_iwaa",
   "is_connected",
   "step_2_section",
   "column_break_bhfs",
@@ -20,7 +25,8 @@
   "column_break_iqab",
   "project_id",
   "project_name",
-  "scope_tab"
+  "scope_tab",
+  "module_integration"
  ],
  "fields": [
   {
@@ -58,6 +64,7 @@
   {
    "fieldname": "creds_section",
    "fieldtype": "Section Break",
+   "hide_border": 1,
    "label": "Step 1"
   },
   {
@@ -108,13 +115,42 @@
    "fieldname": "project_name",
    "fieldtype": "Data",
    "label": "Project Name"
+  },
+  {
+   "fieldname": "module_integration",
+   "fieldtype": "Table",
+   "label": "Module Integration",
+   "options": "Module Integrations"
+  },
+  {
+   "fieldname": "column_break_vkyx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_cfya",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "section_break_enhy",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "column_break_leww",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_iwaa",
+   "fieldtype": "Section Break"
   }
  ],
  "grid_page_length": 50,
+ "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-02-02 00:11:06.440774",
+ "modified": "2026-02-21 06:27:28.625107",
  "modified_by": "Administrator",
  "module": "Mform Integration",
  "name": "mForm Settings",
