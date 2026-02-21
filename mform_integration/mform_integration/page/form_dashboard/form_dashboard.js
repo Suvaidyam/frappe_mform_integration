@@ -131,34 +131,46 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 				padding: 20px;
 			}
 		</style>
-		<div class="mform-cards-container">
-			<div class="mform-card mform-card-total">
-				<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
-					Total Responses
+		<div class="mform-dashboard-content" style="opacity:0;transition:opacity 0.2s ease;">
+			<div class="mform-cards-container">
+				<div class="mform-card mform-card-total mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:0ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Total Responses
+					</div>
+					<div class="mform-card-count">${data.total}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
+					<div class="mform-card-icon">${frappe.utils.icon("file", "lg")}</div>
 				</div>
-				<div class="mform-card-count">${data.total}</div>
-				<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
-				<div class="mform-card-icon">${frappe.utils.icon("file", "lg")}</div>
-			</div>
-			<div class="mform-card mform-card-surveyors">
-				<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
-					Active Surveyors
+				<div class="mform-card mform-card-surveyors mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:35ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Active Surveyors
+					</div>
+					<div class="mform-card-count">${data.this_week}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
+					<div class="mform-card-icon">${frappe.utils.icon("users", "lg")}</div>
 				</div>
-				<div class="mform-card-count">${data.this_week}</div>
-				<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
-				<div class="mform-card-icon">${frappe.utils.icon("users", "lg")}</div>
-			</div>
-			<div class="mform-card mform-card-week">
-				<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
-					This Week Responses
+				<div class="mform-card mform-card-week mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:70ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						This Week Responses
+					</div>
+					<div class="mform-card-count">${data.this_week}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Since ${frappe.datetime.get_today()}</div>
+					<div class="mform-card-icon">${frappe.utils.icon("calendar", "lg")}</div>
 				</div>
-				<div class="mform-card-count">${data.this_week}</div>
-				<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Since ${frappe.datetime.get_today()}</div>
-				<div class="mform-card-icon">${frappe.utils.icon("calendar", "lg")}</div>
 			</div>
+			<div id="mform-response-list" class="px-3"></div>
 		</div>
-		<div id="mform-response-list" class="px-3"></div>
 	`);
+
+	const $content = $(page.body).find(".mform-dashboard-content");
+	const $cards = $(page.body).find(".mform-card-anim");
+	requestAnimationFrame(() => {
+		$content.css("opacity", "1");
+		requestAnimationFrame(() => {
+			$cards.css({ opacity: "1", transform: "translateY(0)" });
+			setTimeout(() => $cards.css("transform", ""), 300);
+		});
+	});
 
 	frappe.require("sva_datatable.bundle.js");
 	page["mform_response_list"] = new frappe.ui.SvaDataTable({

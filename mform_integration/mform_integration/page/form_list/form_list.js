@@ -66,26 +66,24 @@ frappe.pages["form-list"].on_page_show = async function (wrapper) {
 
 function render_table(page, form_data, source_doctype, source_docname) {
 	let html = `
-	<div class="px-3 py-2">
+	<div class="px-3 py-2 mform-form-list-content" style="opacity:0;transition:opacity 0.2s ease;">
 		<div class="mform-form-list" style="background:#fff;border-radius:8px;border:1px solid #e2e8f0;">
 			<div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;">
 				<input type="text" class="form-control mform-search-input"
 					placeholder="Search forms..." style="max-width:240px;height:36px;font-size:13px;">
 			</div>
-			<table class="table table-hover" style="margin:0;">
-				<thead>
-					<tr style="background:#f8fafc;">
-						<th style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Form Name</th>
-						<th style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Status</th>
-						<th style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Response Count</th>
-						<th style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Created Date</th>
-						<th style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;">Last Response</th>
-					</tr>
-				</thead>
-				<tbody class="mform-table-body">
-					${form_data.map((item) => get_row_html(item)).join("")}
-				</tbody>
-			</table>
+			<div class="mform-grid-table" style="margin:0;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;">
+				<div class="mform-grid-head" style="display:contents;">
+					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Form Name</div>
+					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Status</div>
+					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Response Count</div>
+					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Created Date</div>
+					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Last Response</div>
+				</div>
+				<div class="mform-table-body" style="display:contents;">
+					${form_data.map((item, idx) => get_row_html(item, idx)).join("")}
+				</div>
+			</div>
 			${
 				form_data.length === 0
 					? '<div style="padding:40px;text-align:center;color:#94a3b8;">No forms mapped yet.</div>'
@@ -96,6 +94,15 @@ function render_table(page, form_data, source_doctype, source_docname) {
 	`;
 
 	$(page.body).html(html);
+
+	const $content = $(page.body).find(".mform-form-list-content");
+	const $rows = $(page.body).find(".mform-form-row");
+	requestAnimationFrame(() => {
+		$content.css("opacity", "1");
+		requestAnimationFrame(() => {
+			$rows.children().css({ opacity: "1", transform: "translateY(0)" });
+		});
+	});
 
 	$(page.body)
 		.off("click", ".mform-form-row")
@@ -109,16 +116,24 @@ function render_table(page, form_data, source_doctype, source_docname) {
 		.on("input", ".mform-search-input", function () {
 			let query = $(this).val().toLowerCase();
 			let filtered = form_data.filter((item) => item.form.toLowerCase().includes(query));
-			$(page.body)
-				.find(".mform-table-body")
-				.html(
-					filtered.map((item) => get_row_html(item)).join("") ||
-						'<tr><td colspan="5" style="padding:40px;text-align:center;color:#94a3b8;">No matching forms.</td></tr>'
+			let $body = $(page.body).find(".mform-table-body");
+			if (filtered.length) {
+				$body.html(filtered.map((item, idx) => get_row_html(item, idx)).join(""));
+				requestAnimationFrame(() => {
+					$body.find(".mform-form-row").children().css({ opacity: "1", transform: "translateY(0)" });
+				});
+			} else {
+				$body.html(
+					'<div class="mform-grid-empty" style="grid-column:1/-1;padding:40px;text-align:center;color:#94a3b8;">No matching forms.</div>'
 				);
+			}
 		});
 }
 
-function get_row_html(item) {
+function get_row_html(item, idx) {
+	if (idx == null) idx = 0;
+	let delay = Math.min(idx * 35, 400);
+	let rowTransition = `opacity 0.25s ease, transform 0.25s ease; transition-delay: ${delay}ms;`;
 	let status = item.count > 0 ? "Active" : "Draft";
 	let status_color =
 		item.count > 0
@@ -130,25 +145,26 @@ function get_row_html(item) {
 		: "\u2014";
 	let last_str = item.last_response ? frappe.datetime.str_to_user(item.last_response) : "\u2014";
 
+	let cell = "padding:14px 20px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;";
 	return `
-		<tr class="mform-form-row" style="cursor:pointer;" data-form="${item.form}">
-			<td style="padding:14px 20px;font-size:13px;font-weight:500;color:#1e40af;border-bottom:1px solid #f1f5f9;">
+		<div class="mform-form-row" style="display:contents;" data-form="${item.form}">
+			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}font-weight:500;color:#1e40af;">
 				${item.form}
-			</td>
-			<td style="padding:14px 20px;border-bottom:1px solid #f1f5f9;">
+			</div>
+			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};padding:14px 20px;border-bottom:1px solid #f1f5f9;">
 				<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500;${status_color}">
 					${status}
 				</span>
-			</td>
-			<td style="padding:14px 20px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">
+			</div>
+			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
 				${item.count}
-			</td>
-			<td style="padding:14px 20px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">
+			</div>
+			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
 				${created_str}
-			</td>
-			<td style="padding:14px 20px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;">
+			</div>
+			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
 				${last_str}
-			</td>
-		</tr>
+			</div>
+		</div>
 	`;
 }

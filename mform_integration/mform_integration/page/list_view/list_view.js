@@ -8,6 +8,7 @@ frappe.pages["list-view"].on_page_load = function (wrapper) {
 
 frappe.pages["list-view"].on_page_show = async function (wrapper) {
 	let page = wrapper.mform_page;
+	if (!page) return;
 	let route = frappe.get_route() || [];
 	let doctype = route[1] != null ? decodeURIComponent(route[1]) : null;
 
@@ -41,7 +42,13 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 	page.set_primary_action(
 		__("Add") + " " + doctype,
 		() => {
-			frappe.new_doc(doctype);
+			const return_doctype = doctype;
+			frappe.route_hooks.after_save = function () {
+				setTimeout(() => {
+					frappe.set_route("list-view", return_doctype);
+				}, 0);
+			};
+			frappe.set_route("Form", doctype, "new");
 		},
 		"add"
 	);
@@ -54,10 +61,46 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 		</div>
 	`);
 
-	let settings = await frappe.db.get_doc("mForm Settings");
-	let match = (settings.module_integration || []).find((row) => row.module === doctype);
-	let module_interface = match ? match.module_interface : null;
+	let settings = null;
+	try {
+		settings = await frappe.db.get_doc("mForm Settings");
+	} catch (e) {
+		$(page.body).html(`
+			<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:80vh;background:white;">
+				<div style="font-size:48px;color:var(--text-light);">
+					${frappe.utils.icon("warning", "xl")}
+				</div>
+				<p style="margin-top:16px;font-size:16px;color:var(--text-muted);text-align:center;max-width:400px;">
+					${__("mForm Settings not found. Configure it and add this module in Module Integration.")}
+				</p>
+				<p style="margin-top:8px;font-size:13px;color:var(--text-light);">
+					<a href="/app/module-list">${__("Module List")}</a> · <a href="/app/mform-settings">${__("mForm Settings")}</a>
+				</p>
+			</div>
+		`);
+		return;
+	}
 
+	let module_integration = (settings && settings.module_integration) ? settings.module_integration : [];
+	let match = module_integration.find((row) => row.module === doctype);
+	if (!match) {
+		$(page.body).html(`
+			<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:80vh;background:white;">
+				<div style="font-size:48px;color:var(--text-light);">
+					${frappe.utils.icon("info", "xl")}
+				</div>
+				<p style="margin-top:16px;font-size:16px;color:var(--text-muted);text-align:center;max-width:400px;">
+					${__("This module is not in Module Integration. Add it in")} <a href="/app/mform-settings">${__("mForm Settings")}</a> ${__("to use list view here.")}
+				</p>
+				<p style="margin-top:8px;font-size:13px;color:var(--text-light);">
+					<a href="/app/module-list">${__("Module List")}</a>
+				</p>
+			</div>
+		`);
+		return;
+	}
+
+	let module_interface = match.module_interface || null;
 	let data = await frappe.db.get_list(doctype, { fields: ["*"] });
 
 	if (!data || data.length === 0) {
@@ -74,11 +117,21 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 		return;
 	}
 
-	let custom_blocks = await frappe.db.get_doc("Custom HTML Block", module_interface);
-	let template = custom_blocks.html;
+	let template = null;
+	if (module_interface && String(module_interface).trim() !== "") {
+		try {
+			let custom_blocks = await frappe.db.get_doc("Custom HTML Block", module_interface);
+			template = custom_blocks && custom_blocks.html ? custom_blocks.html : null;
+		} catch (err) {
+			template = null;
+		}
+	}
+	if (!template) {
+		template = "<div>{doc.name}</div>";
+	}
 
 	let rendered = data
-		.map((doc) => {
+		.map((doc, idx) => {
 			let html = template
 				.replace(/\{frappe\.utils\.icon\(['"]([^'"]+)['"]\)\}/g, (match, icon) => {
 					return frappe.utils.icon(icon);
@@ -86,17 +139,25 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 				.replace(/\{doc\.(\w+)\}/g, (match, field) => {
 					return doc[field] !== undefined ? doc[field] : match;
 				});
-			return `<div class="py-2"><div class="mform-list-item-row" style="cursor:pointer;" data-doctype="${doctype}" data-docname="${doc.name}">${html}</div></div>`;
+			const delay = Math.min(idx * 35, 400);
+			return `<div class="py-2 mform-list-item" style="cursor:pointer;opacity:0;transform:translateY(8px);transition:opacity 0.25s ease,transform 0.25s ease;transition-delay:${delay}ms;" data-doctype="${doctype}" data-docname="${doc.name}">${html}</div>`;
 		})
 		.join("");
-	rendered = `<div class="p-3">${rendered}</div>`;
+	rendered = `<div class="p-3 mform-list-view-content" style="opacity:0;transition:opacity 0.2s ease;">${rendered}</div>`;
 	$(page.body).html(rendered);
 
-	$(page.body)
-		.off("click", ".mform-list-item-row")
-		.on("click", ".mform-list-item-row", function () {
-			let dt = $(this).data("doctype");
-			let dn = $(this).data("docname");
-			frappe.set_route("form-list", dt, dn);
+	const $content = $(page.body).find(".mform-list-view-content");
+	const $items = $(page.body).find(".mform-list-item");
+	$(page.body).off("click", ".mform-list-item").on("click", ".mform-list-item", function () {
+		let dt = $(this).data("doctype");
+		let dn = $(this).data("docname");
+		frappe.set_route("form-list", dt, dn);
+	});
+
+	requestAnimationFrame(() => {
+		$content.css("opacity", "1");
+		requestAnimationFrame(() => {
+			$items.css({ opacity: "1", transform: "translateY(0)" });
 		});
+	});
 };
