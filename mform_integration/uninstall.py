@@ -1,10 +1,19 @@
 import frappe
 
 MFORM_CUSTOM_FIELDNAMES = ["mform_mapper_section", "mform_form_mapper"]
+MFORM_WORKSPACE = "mForm"
 
 
 def before_uninstall():
 	cleanup_custom_fields()
+	remove_mform_workspace()
+
+
+def remove_mform_workspace():
+	"""Remove mForm workspace on uninstall."""
+	if frappe.db.exists("Workspace", MFORM_WORKSPACE):
+		frappe.delete_doc("Workspace", MFORM_WORKSPACE, force=True)
+		frappe.db.commit()
 
 
 def cleanup_custom_fields():

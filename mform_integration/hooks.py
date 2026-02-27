@@ -91,7 +91,7 @@ page_js = {
 # ------------
 
 # before_install = "mform_integration.install.before_install"
-# after_install = "mform_integration.install.after_install"
+after_install = "mform_integration.install.after_install"
 
 # Uninstallation
 # ------------
