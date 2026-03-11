@@ -1,6 +1,11 @@
 import frappe
 
-MFORM_CUSTOM_FIELDNAMES = ["mform_mapper_section", "mform_form_mapper"]
+MFORM_CUSTOM_FIELDNAMES = [
+	"mform_mapper_section",
+	"mform_form_mapper",
+	"is_mform",
+	"mform_interaction_html",
+]
 MFORM_WORKSPACE = "mForm"
 
 

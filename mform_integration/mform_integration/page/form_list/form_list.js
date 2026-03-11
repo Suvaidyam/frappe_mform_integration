@@ -56,115 +56,56 @@ frappe.pages["form-list"].on_page_show = async function (wrapper) {
 	let doc_title = ((doc && (doc.programme_name || doc.name)) || docname || "") + " - Forms";
 	page.set_title(doc_title);
 
-	let form_data = await frappe.xcall("mform_integration.apis.api.get_form_list", {
-		doctype,
-		docname,
-	});
+	$(page.body).html(`<div id="mform-form-list" class="p-3"></div>`);
 
-	render_table(page, form_data, doctype, docname);
+	frappe.require("sva_datatable.bundle.js");
+	page["mform_form_list"] = new frappe.ui.SvaDataTable({
+		wrapper: document.getElementById("mform-form-list"),
+		frm: {
+			doc: { doctype: doctype, name: docname },
+			dt_events: {
+				"Form List Report": {
+					get_filters: async () => ({
+						parent_doctype: doctype,
+						parent_docname: docname,
+					}),
+					before_load: (sva_dt) => {
+						if (!sva_dt.columns?.length) {
+							sva_dt.columns = [
+								{ fieldname: "form", fieldtype: "Data", label: "Search Form" },
+							];
+						}
+					},
+					formatter: {
+						form_name: (value) => {
+							return `<span style="cursor:pointer;color:var(--text-color);text-decoration:underline;">${value || "-"}</span>`;
+						},
+						status: (value) => {
+							let color = value === "Active" ? "green" : "yellow";
+							return `<span class="indicator-pill ${color}">${value}</span>`;
+						},
+					},
+					columnEvents: {
+						form_name: {
+							click: (element, value, column, row, sva_dt) => {
+								if (value) {
+									frappe.set_route("form-dashboard", value, doctype, docname);
+								}
+							},
+						},
+					},
+				},
+			},
+		},
+		doctype: null,
+		connection: {
+			connection_type: "Report",
+			link_report: "Form List Report",
+			report_type: "Script Report",
+			title: "Forms",
+			crud_permissions: '["read"]',
+			list_filters: '[{"fieldname":"form","label":"Search Form","fieldtype":"Data","width":2,"inline_edit":0}]',
+			disable_workflow: true,
+		},
+	});
 };
-
-function render_table(page, form_data, source_doctype, source_docname) {
-	let html = `
-	<div class="px-3 py-2 mform-form-list-content" style="opacity:0;transition:opacity 0.2s ease;">
-		<div class="mform-form-list" style="background:#fff;border-radius:8px;border:1px solid #e2e8f0;">
-			<div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;">
-				<input type="text" class="form-control mform-search-input"
-					placeholder="Search forms..." style="max-width:240px;height:36px;font-size:13px;">
-			</div>
-			<div class="mform-grid-table" style="margin:0;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1.5fr;">
-				<div class="mform-grid-head" style="display:contents;">
-					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Form Name</div>
-					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Status</div>
-					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Response Count</div>
-					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Created Date</div>
-					<div style="padding:12px 20px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;background:#f8fafc;">Last Response</div>
-				</div>
-				<div class="mform-table-body" style="display:contents;">
-					${form_data.map((item, idx) => get_row_html(item, idx)).join("")}
-				</div>
-			</div>
-			${
-				form_data.length === 0
-					? '<div style="padding:40px;text-align:center;color:#94a3b8;">No forms mapped yet.</div>'
-					: ""
-			}
-		</div>
-	</div>
-	`;
-
-	$(page.body).html(html);
-
-	const $content = $(page.body).find(".mform-form-list-content");
-	const $rows = $(page.body).find(".mform-form-row");
-	requestAnimationFrame(() => {
-		$content.css("opacity", "1");
-		requestAnimationFrame(() => {
-			$rows.children().css({ opacity: "1", transform: "translateY(0)" });
-		});
-	});
-
-	$(page.body)
-		.off("click", ".mform-form-row")
-		.on("click", ".mform-form-row", function () {
-			let form = $(this).data("form");
-			frappe.set_route("form-dashboard", form, source_doctype || "", source_docname || "");
-		});
-
-	$(page.body)
-		.off("input", ".mform-search-input")
-		.on("input", ".mform-search-input", function () {
-			let query = $(this).val().toLowerCase();
-			let filtered = form_data.filter((item) => item.form.toLowerCase().includes(query));
-			let $body = $(page.body).find(".mform-table-body");
-			if (filtered.length) {
-				$body.html(filtered.map((item, idx) => get_row_html(item, idx)).join(""));
-				requestAnimationFrame(() => {
-					$body.find(".mform-form-row").children().css({ opacity: "1", transform: "translateY(0)" });
-				});
-			} else {
-				$body.html(
-					'<div class="mform-grid-empty" style="grid-column:1/-1;padding:40px;text-align:center;color:#94a3b8;">No matching forms.</div>'
-				);
-			}
-		});
-}
-
-function get_row_html(item, idx) {
-	if (idx == null) idx = 0;
-	let delay = Math.min(idx * 35, 400);
-	let rowTransition = `opacity 0.25s ease, transform 0.25s ease; transition-delay: ${delay}ms;`;
-	let status = item.count > 0 ? "Active" : "Draft";
-	let status_color =
-		item.count > 0
-			? "background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;"
-			: "background:#fef3c7;color:#d97706;border:1px solid #fde68a;";
-
-	let created_str = item.created
-		? frappe.datetime.str_to_user(item.created).split(" ")[0]
-		: "\u2014";
-	let last_str = item.last_response ? frappe.datetime.str_to_user(item.last_response) : "\u2014";
-
-	let cell = "padding:14px 20px;font-size:13px;color:#334155;border-bottom:1px solid #f1f5f9;";
-	return `
-		<div class="mform-form-row" style="display:contents;" data-form="${item.form}">
-			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}font-weight:500;color:#1e40af;">
-				${item.form}
-			</div>
-			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};padding:14px 20px;border-bottom:1px solid #f1f5f9;">
-				<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:500;${status_color}">
-					${status}
-				</span>
-			</div>
-			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
-				${item.count}
-			</div>
-			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
-				${created_str}
-			</div>
-			<div style="cursor:pointer;opacity:0;transform:translateY(8px);transition:${rowTransition};${cell}">
-				${last_str}
-			</div>
-		</div>
-	`;
-}
