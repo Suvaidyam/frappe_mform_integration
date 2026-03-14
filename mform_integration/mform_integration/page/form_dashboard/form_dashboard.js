@@ -146,8 +146,13 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 			</div>
 			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">
 				<div style="flex:1 1 55%;min-width:300px;" id="mform-submission-chart"></div>
-				<div class="mform-card" style="flex:1 1 35%;min-width:300px;">
-					<div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px;">Geographical Reach</div>
+				<div class="mform-card" style="flex:1 1 35%;min-width:300px;position:relative;">
+					<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+						<div style="font-size:14px;font-weight:600;color:#1e293b;">Geographical Reach</div>
+						<button class="btn btn-xs btn-default" id="mform-geo-maximize" title="Maximize" style="padding:2px 6px;">
+							${frappe.utils.icon("expand", "sm")}
+						</button>
+					</div>
 					<div id="mform-geo-map" style="height:390px;border-radius:8px;overflow:hidden;"></div>
 				</div>
 			</div>
@@ -214,10 +219,6 @@ function render_geo_map(doctype) {
 			$("#mform-geo-map").html('<p style="color:var(--text-muted);height: 379px;color: #6c757d;background-color: #f8f9fa;margin-top: 10px;display: flex;justify-content: center;align-items: center;">No location data</p>');
 			return;
 		}
-		let map = L.map("mform-geo-map", { scrollWheelZoom: true });
-		L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-		}).addTo(map);
 
 		// Group records by coordinate key
 		let groups = {};
@@ -235,21 +236,63 @@ function render_geo_map(doctype) {
 			}
 		});
 
-		// Create one marker per unique location
-		let bounds = [];
-		Object.values(groups).forEach((group) => {
-			let latlng = [group.lat, group.lng];
-			let marker = L.marker(latlng).addTo(map);
-			marker.on("click", () => {
-				show_location_dialog(group.records, doctype);
-			});
-			bounds.push(latlng);
-		});
+		init_map("mform-geo-map", groups, doctype);
 
-		if (bounds.length) {
-			map.fitBounds(bounds, { padding: [30, 30] });
-		}
+		// Maximize button
+		$("#mform-geo-maximize").on("click", () => {
+			let mapId = "mform-geo-map-max-" + Date.now();
+			let dlg = new frappe.ui.Dialog({
+				title: "Geographical Reach",
+				fields: [
+					{
+						fieldtype: "HTML",
+						fieldname: "max_map",
+					},
+				],
+			});
+			frappe.utils.make_dialog_fullscreen(dlg);
+			dlg.show();
+			dlg.fields_dict.max_map.$wrapper.html(
+				`<div id="${mapId}" style="height:70vh;border-radius:8px;overflow:hidden;"></div>`
+			);
+			setTimeout(() => {
+				init_map(mapId, groups, doctype);
+			}, 200);
+			dlg.on_hide = () => {
+				if (_mform_map_instances[mapId]) {
+					_mform_map_instances[mapId].remove();
+					delete _mform_map_instances[mapId];
+				}
+			};
+		});
 	});
+}
+
+let _mform_map_instances = {};
+
+function init_map(containerId, groups, doctype) {
+	if (_mform_map_instances[containerId]) {
+		_mform_map_instances[containerId].remove();
+		delete _mform_map_instances[containerId];
+	}
+	let map = L.map(containerId, { scrollWheelZoom: true });
+	_mform_map_instances[containerId] = map;
+	L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+	}).addTo(map);
+
+	let bounds = [];
+	Object.values(groups).forEach((group) => {
+		let latlng = [group.lat, group.lng];
+		let marker = L.marker(latlng).addTo(map);
+		marker.on("click", () => {
+			show_location_dialog(group.records, doctype);
+		});
+		bounds.push(latlng);
+	});
+
+	if (bounds.length) {
+		map.fitBounds(bounds, { padding: [30, 30] });
+	}
 }
 
 function show_location_dialog(records, doctype) {
