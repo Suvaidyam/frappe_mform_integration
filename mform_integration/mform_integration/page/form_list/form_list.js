@@ -72,7 +72,7 @@ frappe.pages["form-list"].on_page_show = async function (wrapper) {
 					before_load: (sva_dt) => {
 						if (!sva_dt.columns?.length) {
 							sva_dt.columns = [
-								{ fieldname: "form", fieldtype: "Data", label: "Search Form" },
+								{ fieldname: "form", fieldtype: "Data", label: "Search Forms.." },
 							];
 						}
 					},

@@ -26,6 +26,10 @@ def get_data(filters):
 	parent_docname = filters.get("parent_docname")
 	form_search = filters.get("form")
 
+	# Handle filter format from SvaDataTable: ["like", "%value%"]
+	if isinstance(form_search, (list, tuple)):
+		form_search = form_search[-1] if form_search else None
+
 	if not parent_doctype or not parent_docname:
 		return []
 
@@ -34,7 +38,10 @@ def get_data(filters):
 
 	if form_search:
 		conditions += " AND form LIKE %s"
-		values.append(f"%{form_search}%")
+		# Avoid double wrapping with %
+		if "%" not in str(form_search):
+			form_search = f"%{form_search}%"
+		values.append(form_search)
 
 	forms = frappe.db.sql(
 		f"""
