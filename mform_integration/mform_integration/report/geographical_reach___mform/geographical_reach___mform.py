@@ -21,6 +21,8 @@ def get_columns():
 		{"fieldname": "name", "label": _("Record"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "latitude", "label": _("Latitude"), "fieldtype": "Float", "width": 120},
 		{"fieldname": "longitude", "label": _("Longitude"), "fieldtype": "Float", "width": 120},
+		{"fieldname": "owner", "label": _("Owner"), "fieldtype": "Data", "width": 150},
+		{"fieldname": "creation", "label": _("Created On"), "fieldtype": "Datetime", "width": 160},
 	]
 
 
@@ -34,7 +36,7 @@ def get_data(doctype):
 	table = f"`tab{doctype}`"
 	rows = frappe.db.sql(
 		f"""
-		SELECT name, coordinates
+		SELECT name, coordinates, owner, creation
 		FROM {table}
 		WHERE coordinates IS NOT NULL AND coordinates != ''
 		ORDER BY creation DESC
@@ -50,6 +52,8 @@ def get_data(doctype):
 				"name": row["name"],
 				"latitude": lat,
 				"longitude": lng,
+				"owner": row.get("owner", ""),
+				"creation": str(row.get("creation", "")),
 			})
 
 	return data

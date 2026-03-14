@@ -218,17 +218,109 @@ function render_geo_map(doctype) {
 		L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 		}).addTo(map);
-		let bounds = [];
+
+		// Group records by coordinate key
+		let groups = {};
 		result.forEach((row) => {
 			if (row.latitude && row.longitude) {
-				let latlng = [row.latitude, row.longitude];
-				L.marker(latlng).addTo(map).bindPopup(row.name || "");
-				bounds.push(latlng);
+				let key = row.latitude + "," + row.longitude;
+				if (!groups[key]) {
+					groups[key] = {
+						lat: row.latitude,
+						lng: row.longitude,
+						records: [],
+					};
+				}
+				groups[key].records.push(row);
 			}
 		});
+
+		// Create one marker per unique location
+		let bounds = [];
+		Object.values(groups).forEach((group) => {
+			let latlng = [group.lat, group.lng];
+			let marker = L.marker(latlng).addTo(map);
+			marker.on("click", () => {
+				show_location_dialog(group.records, doctype);
+			});
+			bounds.push(latlng);
+		});
+
 		if (bounds.length) {
 			map.fitBounds(bounds, { padding: [30, 30] });
 		}
+	});
+}
+
+function show_location_dialog(records, doctype) {
+	let names = records.map((r) => r.name);
+	let lat = records[0].latitude;
+	let lng = records[0].longitude;
+
+	let dlg = new frappe.ui.Dialog({
+		title: `${doctype} - Geographical Reach`,
+		size: "extra-large",
+		fields: [
+			{
+				fieldtype: "HTML",
+				fieldname: "location_table",
+			},
+			{
+				fieldtype: "HTML",
+				fieldname: "location_card",
+			},
+		],
+	});
+
+	dlg.fields_dict.location_card.$wrapper.html(`
+		<div style="margin-top:12px;padding:14px 18px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e3a5f;display:flex;align-items:center;gap:10px;">
+			<div style="font-size:18px;">📍</div>
+			<div>
+				<div style="font-weight:600;font-size:13px;">Location</div>
+				<div class="geo-address-text" style="font-size:12px;color:#3b6fa0;">Loading address...</div>
+			</div>
+			<div style="margin-left:auto;font-size:12px;background:#dbeafe;padding:4px 10px;border-radius:4px;color:#1d4ed8;">
+				${names.length} Record${names.length > 1 ? "s" : ""}
+			</div>
+		</div>
+	`);
+
+	// Reverse geocode to get address
+	fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+		.then((r) => r.json())
+		.then((data) => {
+			let address = data.display_name || `${lat}, ${lng}`;
+			dlg.fields_dict.location_card.$wrapper.find(".geo-address-text").text(address);
+		})
+		.catch(() => {
+			dlg.fields_dict.location_card.$wrapper.find(".geo-address-text").text(`${lat}, ${lng}`);
+		});
+
+	dlg.show();
+
+	frappe.require("sva_datatable.bundle.js", () => {
+		new frappe.ui.SvaDataTable({
+			wrapper: dlg.fields_dict.location_table.$wrapper[0],
+			frm: {
+				is_new: () => false,
+				dt_events: {
+					[doctype]: {
+						before_load: async function (dt) {
+							dt.additional_list_filters = [
+								[doctype, "name", "IN", names],
+							];
+						},
+					},
+				},
+			},
+			doctype: doctype,
+			connection: {
+				connection_type: "Unfiltered",
+				title: "",
+				unfiltered: 1,
+				crud_permissions: '["read"]',
+			},
+		});
 	});
 }
 
