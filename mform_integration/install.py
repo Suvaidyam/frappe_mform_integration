@@ -1,4 +1,5 @@
 import frappe
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 MFORM_WORKSPACE = "mForm"
 MODULE_NAME = "Grant"
@@ -11,8 +12,34 @@ COLOR_RESET = "\033[0m"
 
 
 def after_install():
-	"""Create mForm workspace after app install, asking user which existing app to use."""
+	"""Create mForm workspace and custom fields after app install."""
+	create_custom_html_block_fields()
 	create_mform_workspace()
+
+
+def create_custom_html_block_fields():
+	"""Add is_mform and mform_interaction_html custom fields to Custom HTML Block."""
+	create_custom_fields(
+		{
+			"Custom HTML Block": [
+				{
+					"fieldname": "is_mform",
+					"fieldtype": "Check",
+					"label": "Is mForm",
+					"insert_after": "preview",
+					"default": "0",
+				},
+				{
+					"fieldname": "mform_interaction_html",
+					"fieldtype": "HTML",
+					"label": "mForm Interaction",
+					"insert_after": "is_mform",
+					"depends_on": "eval:doc.is_mform",
+				},
+			]
+		},
+		update=True,
+	)
 
 
 def get_next_sequence_id(app_name: str) -> int:

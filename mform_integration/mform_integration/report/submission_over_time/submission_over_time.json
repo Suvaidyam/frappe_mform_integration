@@ -1,0 +1,43 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2026-03-14 12:40:34.184231",
+ "custom_create_view": 0,
+ "custom_refresh_frequency": 0,
+ "custom_view_type": "Logical",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Doctype",
+   "mandatory": 0,
+   "options": "Doctype",
+   "wildcard_filter": 0
+  }
+ ],
+ "idx": 1,
+ "is_standard": "Yes",
+ "letterhead": null,
+ "modified": "2026-03-14 15:59:38.912412",
+ "modified_by": "Administrator",
+ "module": "Mform Integration",
+ "name": "Submission Over Time",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "DocType",
+ "report_name": "Submission Over Time",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
+ "timeout": 0
+}

@@ -101,8 +101,9 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 	}
 
 	let module_interface = match.module_interface || null;
-	let data = await frappe.db.get_list(doctype, { fields: ["*"] });
-
+	let data = await frappe.call("mform_integration.apis.api.get_module_list", { doctype: doctype });
+	data = data.message || [];
+    
 	if (!data || data.length === 0) {
 		$(page.body).html(`
 			<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:80vh;background:white;">
@@ -136,8 +137,13 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 				.replace(/\{frappe\.utils\.icon\(['"]([^'"]+)['"]\)\}/g, (match, icon) => {
 					return frappe.utils.icon(icon);
 				})
-				.replace(/\{doc\.(\w+)\}/g, (match, field) => {
-					return doc[field] !== undefined ? doc[field] : match;
+				.replace(/\{doc\.([^}]+)\}/g, (match, expr) => {
+					try {
+						let value = new Function('doc', 'return doc.' + expr)(doc);
+						return value !== undefined && value !== null ? value : match;
+					} catch (e) {
+						return match;
+					}
 				});
 			const delay = Math.min(idx * 35, 400);
 			return `<div class="py-2 mform-list-item" style="cursor:pointer;opacity:0;transform:translateY(8px);transition:opacity 0.25s ease,transform 0.25s ease;transition-delay:${delay}ms;" data-doctype="${doctype}" data-docname="${doc.name}">${html}</div>`;

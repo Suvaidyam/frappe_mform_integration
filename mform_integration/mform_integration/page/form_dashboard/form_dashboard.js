@@ -72,30 +72,16 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 				background: #fff;
 				border-radius: 10px;
 				border: 1px solid #e2e8f0;
-				padding: 16px;
+				padding: 11px;
 				transition: all 0.3s ease;
 				position: relative;
 				overflow: hidden;
 			}
-			.mform-card::before {
-				content: '';
-				position: absolute;
-				top: 0;
-				left: 0;
-				width: 4px;
-				height: 100%;
-				border-radius: 10px 0 0 10px;
-				transition: width 0.3s ease;
-			}
+	
 			.mform-card-total::before { background: linear-gradient(180deg, #3b82f6, #1d4ed8); }
 			.mform-card-surveyors::before { background: linear-gradient(180deg, #8b5cf6, #6d28d9); }
 			.mform-card-week::before { background: linear-gradient(180deg, #10b981, #059669); }
-			.mform-card:hover {
-				transform: translateY(-4px);
-				box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-				border-color: transparent;
-			}
-			.mform-card:hover::before { width: 6px; }
+			
 			.mform-card-count {
 				font-size: 20px;
 				font-weight: 700;
@@ -158,6 +144,13 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div class="mform-card-icon">${frappe.utils.icon("calendar", "lg")}</div>
 				</div>
 			</div>
+			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">
+				<div style="flex:1 1 55%;min-width:300px;" id="mform-submission-chart"></div>
+				<div class="mform-card" style="flex:1 1 35%;min-width:300px;">
+					<div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px;">Geographical Reach</div>
+					<div id="mform-geo-map" style="height:390px;border-radius:8px;overflow:hidden;"></div>
+				</div>
+			</div>
 			<div id="mform-response-list" class="px-3"></div>
 		</div>
 	`);
@@ -172,6 +165,74 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 		});
 	});
 
+	render_submission_chart(doctype);
+	render_geo_map(doctype);
+	render_response_table(page, doctype);
+};
+
+async function render_submission_chart(doctype) {
+	frappe.require("sva_chart.bundle.js"); 
+	let charts =  document.getElementById("mform-submission-chart")
+	// if (typeof frappe.ui.SVADashboardManager === "tasdf") {
+		// 	return;
+		// }
+		let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
+			chart_name: "Submission Over Time"
+		});
+		let items = {
+			fetch_from: "Dashboard Chart",
+			...item,
+			details: item?.chart,
+			is_permitted: true,
+
+		};
+		new frappe.ui.SVADashboardManager({
+			wrapper: charts,
+			frm: {
+				'is_new': () => false, 
+				"dt_events":{
+					"Submission Over Time":{
+						get_filters: function() {
+							return {
+								reference_doctype: doctype
+							}
+						}
+					}
+				}
+			},
+			charts: [items],
+		});
+}
+
+function render_geo_map(doctype) {
+	frappe.xcall("frappe.desk.query_report.run", {
+		report_name: "Geographical Reach - mForm",
+		filters: { reference_doctype: doctype },
+	}).then((res) => {
+		let result = res.result || [];
+		if (!result.length) {
+			$("#mform-geo-map").html('<p style="color:var(--text-muted);height: 379px;color: #6c757d;background-color: #f8f9fa;margin-top: 10px;display: flex;justify-content: center;align-items: center;">No location data</p>');
+			return;
+		}
+		let map = L.map("mform-geo-map", { scrollWheelZoom: true });
+		L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+		}).addTo(map);
+		let bounds = [];
+		result.forEach((row) => {
+			if (row.latitude && row.longitude) {
+				let latlng = [row.latitude, row.longitude];
+				L.marker(latlng).addTo(map).bindPopup(row.name || "");
+				bounds.push(latlng);
+			}
+		});
+		if (bounds.length) {
+			map.fitBounds(bounds, { padding: [30, 30] });
+		}
+	});
+}
+
+function render_response_table(page, doctype) {
 	frappe.require("sva_datatable.bundle.js");
 	page["mform_response_list"] = new frappe.ui.SvaDataTable({
 		wrapper: document.getElementById("mform-response-list"),
@@ -184,4 +245,4 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 			crud_permissions: '["read"]',
 		},
 	});
-};
+}
