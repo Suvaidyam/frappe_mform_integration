@@ -253,7 +253,7 @@ function render_geo_map(doctype) {
 			frappe.utils.make_dialog_fullscreen(dlg);
 			dlg.show();
 			dlg.fields_dict.max_map.$wrapper.html(
-				`<div id="${mapId}" style="height:70vh;border-radius:8px;overflow:hidden;"></div>`
+				`<div id="${mapId}" style="height:calc(100vh - 100px);border-radius:8px;overflow:hidden;"></div>`
 			);
 			setTimeout(() => {
 				init_map(mapId, groups, doctype);
