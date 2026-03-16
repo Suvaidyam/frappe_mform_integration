@@ -1,3 +1,4 @@
+
 frappe.pages["form-dashboard"].on_page_load = function (wrapper) {
 	wrapper.mform_page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -20,11 +21,11 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 	let source_docname =
 		route.length > 3
 			? route
-					.slice(3)
-					.map(function (s) {
-						return decodeURIComponent(s);
-					})
-					.join("/")
+				.slice(3)
+				.map(function (s) {
+					return decodeURIComponent(s);
+				})
+				.join("/")
 			: null;
 
 	frappe.breadcrumbs.add({
@@ -176,37 +177,37 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 };
 
 async function render_submission_chart(doctype) {
-	frappe.require("sva_chart.bundle.js"); 
-	let charts =  document.getElementById("mform-submission-chart")
+	frappe.require("sva_chart.bundle.js");
+	let charts = document.getElementById("mform-submission-chart")
 	// if (typeof frappe.ui.SVADashboardManager === "tasdf") {
-		// 	return;
-		// }
-		let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
-			chart_name: "Submission Over Time"
-		});
-		let items = {
-			fetch_from: "Dashboard Chart",
-			...item,
-			details: item?.chart,
-			is_permitted: true,
+	// 	return;
+	// }
+	let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
+		chart_name: "Submission Over Time"
+	});
+	let items = {
+		fetch_from: "Dashboard Chart",
+		...item,
+		details: item?.chart,
+		is_permitted: true,
 
-		};
-		new frappe.ui.SVADashboardManager({
-			wrapper: charts,
-			frm: {
-				'is_new': () => false, 
-				"dt_events":{
-					"Submission Over Time":{
-						get_filters: function() {
-							return {
-								reference_doctype: doctype
-							}
+	};
+	new frappe.ui.SVADashboardManager({
+		wrapper: charts,
+		frm: {
+			'is_new': () => false,
+			"dt_events": {
+				"Submission Over Time": {
+					get_filters: function () {
+						return {
+							reference_doctype: doctype
 						}
 					}
 				}
-			},
-			charts: [items],
-		});
+			}
+		},
+		charts: [items],
+	});
 }
 
 function render_geo_map(doctype) {
@@ -369,9 +370,25 @@ function show_location_dialog(records, doctype) {
 
 function render_response_table(page, doctype) {
 	frappe.require("sva_datatable.bundle.js");
+	let wrapper = document.getElementById("mform-response-list");
 	page["mform_response_list"] = new frappe.ui.SvaDataTable({
-		wrapper: document.getElementById("mform-response-list"),
-		frm: {},
+		wrapper: wrapper,
+		frm: {
+			dt_events: {
+				[doctype]: {
+					columnEvents: {
+						"#": {
+							"click": function (element, value, column, row) {
+								let route = frappe.get_route() || [];
+								let source_doctype = route[2] || '';
+								let source_docname = route.slice(3).join('/') || '';
+								frappe.set_route("response-details", row.name, doctype, source_doctype, source_docname);
+							}
+						}
+					},
+				},
+			}
+		},
 		doctype: doctype,
 		connection: {
 			connection_type: "Unfiltered",

@@ -123,6 +123,8 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 		try {
 			let custom_blocks = await frappe.db.get_doc("Custom HTML Block", module_interface);
 			template = custom_blocks && custom_blocks.html ? custom_blocks.html : null;
+			var block_script = custom_blocks && custom_blocks.script ? custom_blocks.script : null;
+			var block_style = custom_blocks && custom_blocks.style ? custom_blocks.style : null;
 		} catch (err) {
 			template = null;
 		}
@@ -149,7 +151,7 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 			return `<div class="py-2 mform-list-item" style="cursor:pointer;opacity:0;transform:translateY(8px);transition:opacity 0.25s ease,transform 0.25s ease;transition-delay:${delay}ms;" data-doctype="${doctype}" data-docname="${doc.name}">${html}</div>`;
 		})
 		.join("");
-	rendered = `<div class="p-3 mform-list-view-content" style="opacity:0;transition:opacity 0.2s ease;">${rendered}</div>`;
+	rendered = `${block_style ? `<style>${block_style}</style>` : ''}<div class="p-3 mform-list-view-content" style="opacity:0;transition:opacity 0.2s ease;">${rendered}</div>`;
 	$(page.body).html(rendered);
 
 	const $content = $(page.body).find(".mform-list-view-content");
@@ -166,4 +168,16 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 			$items.css({ opacity: "1", transform: "translateY(0)" });
 		});
 	});
+
+	if (block_script) {
+		$items.each(function (idx) {
+			let root_element = this;
+			let doc = data[idx];
+			try {
+				new Function('root_element', 'doc', 'frappe', block_script)(root_element, doc, frappe);
+			} catch (e) {
+				console.error("Error executing block script for item", doc.name, e);
+			}
+		});
+	}
 };
