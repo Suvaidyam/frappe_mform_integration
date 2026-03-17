@@ -40,9 +40,10 @@ def get_data(doctype):
 	)
 
 	for row in rows:
-		# Extract ISO week number from YEARWEEK (last 2 digits)
-		week_no = int(str(row["week_num"])[-2:])
-		row["week"] = f"Week {week_no}"
+		week_num_str = str(row["week_num"])
+		year = week_num_str[:-2]
+		week_no = int(week_num_str[-2:])
+		row["week"] = f"{year}-W{week_no}"
 
 	return rows
 

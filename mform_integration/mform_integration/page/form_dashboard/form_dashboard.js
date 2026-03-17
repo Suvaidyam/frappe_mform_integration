@@ -117,6 +117,22 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 				gap: 20px;
 				padding: 20px;
 			}
+			.mform-charts-row {
+				display: flex;
+				gap: 20px;
+			}
+			.mform-chart-item {
+				flex: 1 1 0%;
+				min-width: 0;
+			}
+			@media (max-width: 1068px) {
+				.mform-charts-row {
+					flex-direction: column;
+				}
+				.mform-chart-item {
+					min-width: 100%;
+				}
+			}
 		</style>
 		<div class="mform-dashboard-content" style="opacity:0;transition:opacity 0.2s ease;">
 			<div class="mform-cards-container">
@@ -146,7 +162,10 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 				</div>
 			</div>
 			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">
-				<div style="flex:1 1 55%;min-width:300px;" id="mform-submission-chart"></div>
+				<div class="mform-charts-row">
+					<div class="mform-chart-item" id="mform-submission-chart"></div>
+					<div class="mform-chart-item" id="mform-state-chart"></div>
+				</div>
 				<div class="mform-card" style="flex:1 1 35%;min-width:300px;position:relative;">
 					<div id="mform-geo-map"></div>
 				</div>
@@ -166,6 +185,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 	});
 
 	render_submission_chart(doctype);
+	render_state_chart(doctype);
 	render_geo_map(doctype);
 	render_response_table(page, doctype);
 };
@@ -192,6 +212,36 @@ async function render_submission_chart(doctype) {
 			'is_new': () => false,
 			"dt_events": {
 				"Submission Over Time": {
+					get_filters: function () {
+						return {
+							reference_doctype: doctype
+						}
+					}
+				}
+			}
+		},
+		charts: [items],
+	});
+}
+
+async function render_state_chart(doctype) {
+	frappe.require("sva_chart.bundle.js");
+	let charts = document.getElementById("mform-state-chart");
+	let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
+		chart_name: "Responses by State"
+	});
+	let items = {
+		fetch_from: "Dashboard Chart",
+		...item,
+		details: item?.chart,
+		is_permitted: true,
+	};
+	new frappe.ui.SVADashboardManager({
+		wrapper: charts,
+		frm: {
+			'is_new': () => false,
+			"dt_events": {
+				"Responses by State": {
 					get_filters: function () {
 						return {
 							reference_doctype: doctype
