@@ -105,6 +105,7 @@ frappe.pages["form-list"].on_page_show = async function (wrapper) {
 			title: "Forms",
 			crud_permissions: '["read"]',
 			list_filters: '[{"fieldname":"form","label":"Search Form","fieldtype":"Data","width":2,"inline_edit":0}]',
+			listview_settings: `[{"fieldname":"form_name","fieldtype":"Data","label":"Form Name","width":"10","inline_edit":0},{"fieldname":"status","fieldtype":"Data","label":"Status","width":"2","inline_edit":0},{"fieldname":"response_count","fieldtype":"Int","label":"Response Count","width":"2","inline_edit":0},{"fieldname":"created_date","fieldtype":"Date","label":"Created Date","width":"2","inline_edit":0},{"fieldname":"last_response","fieldtype":"Datetime","label":"Last Response","width":"2","inline_edit":0}]`,
 			disable_workflow: true,
 		},
 	});

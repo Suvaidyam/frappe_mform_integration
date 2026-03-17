@@ -63,7 +63,8 @@ frappe.pages["list-view"].on_page_show = async function (wrapper) {
 
 	let settings = null;
 	try {
-		settings = await frappe.db.get_doc("mForm Settings");
+		settings = await frappe.call("mform_integration.apis.api.get_mform_settings");
+		settings = settings.message || null;
 	} catch (e) {
 		$(page.body).html(`
 			<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:80vh;background:white;">

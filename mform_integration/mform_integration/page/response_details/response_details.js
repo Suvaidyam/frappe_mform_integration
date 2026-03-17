@@ -8,6 +8,10 @@ frappe.pages['response-details'].on_page_load = function(wrapper) {
 
 frappe.pages['response-details'].on_page_show = async function(wrapper) {
 	let page = wrapper.response_page;
+	page.clear_actions();
+	page.clear_custom_actions();
+	page.clear_actions_menu();
+	page.clear_indicator();
 	let route = frappe.get_route() || [];
 	let name = route[1] ? decodeURIComponent(route[1]) : null;
 	let doctype = route[2] ? decodeURIComponent(route[2]) : '';
@@ -34,7 +38,7 @@ frappe.pages['response-details'].on_page_show = async function(wrapper) {
 
 	// Cleanup previous map instance
 	if (wrapper._response_map) {
-		wrapper._response_map.remove();
+		wrapper._response_map.destroy();
 		wrapper._response_map = null;
 	}
 
@@ -91,6 +95,19 @@ frappe.pages['response-details'].on_page_show = async function(wrapper) {
 		`);
 		return;
 	}
+
+	// Show workflow state in page header
+	if (doc.workflow_state) {
+		page.set_indicator(doc.workflow_state, get_workflow_state_color(doc.workflow_state));
+	}
+
+	// Edit button - redirect to main form
+	page.add_inner_button(frappe.utils.icon("edit"), () => {
+		frappe.set_route("Form", doctype, name);
+	});
+
+	// Setup workflow action buttons
+	await setup_workflow_actions(wrapper, page, doc, doctype);
 
 	// Determine rendering mode: check form_interface
 	let form_interface = null;
@@ -200,7 +217,7 @@ async function render_default_view(wrapper, page, doc, fields) {
 	// Init map if geo section exists
 	let coords = parse_coordinates(doc, fields);
 	if (coords) {
-		init_response_map(wrapper, coords);
+		init_geo_map(wrapper, coords);
 	}
 }
 
@@ -343,70 +360,226 @@ function build_geo_section(doc, fields) {
 	let coords = parse_coordinates(doc, fields);
 	if (!coords) return '';
 
-	return `
-		<div class="mform-detail-card">
-			<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-				<div style="font-size:14px;font-weight:600;color:#1e293b;">Household Geo Tagging</div>
-				<button class="btn btn-xs btn-default" id="response-geo-maximize" title="Maximize" style="padding:2px 6px;">
-					${frappe.utils.icon("expand", "sm")}
-				</button>
-			</div>
-			<div id="response-detail-map" style="height:250px;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;"></div>
-			<div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
-				<span class="geo-village-name"></span>
-				<span class="geo-coordinates">Coordinates: ${coords.lat}, ${coords.lng}</span>
-			</div>
-		</div>
-	`;
+	return `<div class="mform-detail-card"><div id="response-geo-container"></div></div>`;
 }
 
-function init_response_map(wrapper, coords) {
-	setTimeout(() => {
-		let container = document.getElementById('response-detail-map');
-		if (!container) return;
-
-		let map = L.map('response-detail-map', { scrollWheelZoom: true });
-		wrapper._response_map = map;
-
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		}).addTo(map);
-
-		L.marker([coords.lat, coords.lng]).addTo(map);
-		map.setView([coords.lat, coords.lng], 15);
-
-		// Reverse geocode for village name
-		fetch(`https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lng}&format=json`)
-			.then(r => r.json())
-			.then(data => {
-				let village = data.address?.village || data.address?.town || data.address?.city || data?.address?.county || '';
-				let $el = $('.geo-village-name');
-				if (village) {
-					$el.text('Village: ' + village + '  |  ');
-				}
-			})
-			.catch(() => {});
-
-		// Maximize button
-		$('#response-geo-maximize').on('click', () => {
-			let mapId = 'response-geo-max-' + Date.now();
-			let dlg = new frappe.ui.Dialog({
-				title: 'Household Geo Tagging',
-				fields: [{ fieldtype: 'HTML', fieldname: 'max_map' }],
-			});
-			frappe.utils.make_dialog_fullscreen(dlg);
-			dlg.show();
-			dlg.fields_dict.max_map.$wrapper.html(
-				`<div id="${mapId}" style="height:calc(100vh - 100px);border-radius:8px;overflow:hidden;"></div>`
-			);
-			setTimeout(() => {
-				let maxMap = L.map(mapId, { scrollWheelZoom: true });
-				L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(maxMap);
-				L.marker([coords.lat, coords.lng]).addTo(maxMap);
-				maxMap.setView([coords.lat, coords.lng], 15);
-				dlg.on_hide = () => { maxMap.remove(); };
-			}, 200);
+function init_geo_map(wrapper, coords) {
+	let container = document.getElementById('response-geo-container');
+	if (!container) return;
+	frappe.require("geo_details.bundle.js", () => {
+		wrapper._response_map = new frappe.ui.GeoDetails({
+			wrapper: container,
+			coords: coords,
+			title: 'Household Geo Tagging',
+			maximizeTitle: 'Household Geo Tagging',
+			height: 250,
+			zoom: 15,
+			showMaximize: true,
+			showFooter: true,
 		});
-	}, 100);
+	});
+}
+
+function get_workflow_state_color(state) {
+	if (['Approved', 'Active', 'Completed', 'Submitted'].includes(state)) return 'green';
+	if (['Pending', 'Draft', 'Open'].includes(state)) return 'orange';
+	if (['Rejected', 'Cancelled'].includes(state)) return 'red';
+	return 'blue';
+}
+
+// ─── Workflow Actions ────────────────────────────────────────────────
+
+async function setup_workflow_actions(wrapper, page, doc, doctype) {
+	// Check if active workflow exists for this doctype
+	let workflow_exists = await frappe.db.exists("Workflow", {
+		document_type: doctype,
+		is_active: 1,
+	});
+	if (!workflow_exists) return;
+
+	let transitions = [];
+	try {
+		let result = await frappe.call({
+			method: "frappe.model.workflow.get_transitions",
+			args: { doc: { ...doc, doctype: doctype } },
+			silent: true,
+		}).then(r => r?.message);
+		transitions = result || [];
+	} catch (e) {
+		return;
+	}
+
+	if (!transitions.length) return;
+
+	// Deduplicate by action name
+	let seen = new Set();
+	let unique_transitions = transitions.filter(t => {
+		if (seen.has(t.action)) return false;
+		seen.add(t.action);
+		return true;
+	});
+
+	unique_transitions.forEach((transition) => {
+		page.add_action_item(__(transition.action), () => {
+			show_workflow_dialog(wrapper, page, doc, doctype, transition);
+		});
+	});
+}
+
+async function show_workflow_dialog(wrapper, page, doc, doctype, transition) {
+	// Build dialog fields
+	let wf_dialog_fields = JSON.parse(transition.custom_selected_fields || "[]");
+	let fields = [];
+
+	if (wf_dialog_fields.length) {
+		try {
+			let meta = await frappe.xcall("frappe_theme.api.get_meta", { doctype: doctype });
+			if (meta?.fields) {
+				fields = meta.fields
+					.filter(field => wf_dialog_fields.some(f => f.fieldname == field.fieldname))
+					.map(field => {
+						let field_obj = wf_dialog_fields.find(f => f.fieldname == field.fieldname);
+						return {
+							label: field.label,
+							fieldname: field.fieldname,
+							fieldtype: field.fieldtype,
+							default: (field_obj?.read_only || field_obj?.fetch_if_exists) && doc[field.fieldname],
+							reqd: field_obj?.read_only ? 0 : field_obj?.reqd,
+							read_only: field_obj?.read_only,
+							options: field.options,
+						};
+					});
+			}
+		} catch (e) {
+			// proceed without custom fields
+		}
+	}
+
+	// Comment field
+	let customFields = [];
+	if (transition.is_comment_required || transition.custom_comment) {
+		customFields.push({
+			label: "Comment",
+			fieldname: "wf_comment",
+			fieldtype: "Small Text",
+			reqd: transition.custom_comment_required ? 1 : 0,
+		});
+	}
+
+	// Approval assignment fields
+	if (transition.custom_allow_assignment) {
+		try {
+			let approval_fields = await frappe.xcall("frappe_theme.dt_api.get_meta_fields", {
+				doctype: "Approval Assignment Child",
+				_type: "Direct",
+			});
+			if (approval_fields) {
+				approval_fields.forEach(f => {
+					if (f.fieldname === "user") {
+						let role_profiles = JSON.parse(transition.custom_selected_role_profile || "[]")
+							.map(rp => rp.role_profile);
+						f.get_query = function (row) {
+							let filters = { status: "Active" };
+							if (row?.role_profile) {
+								filters["role_profile"] = ["=", row.role_profile];
+							} else if (role_profiles.length) {
+								filters["role_profile"] = ["in", role_profiles];
+							}
+							return { filters };
+						};
+					} else if (f.fieldname === "role_profile") {
+						let role_profiles = JSON.parse(transition.custom_selected_role_profile || "[]")
+							.map(rp => rp.role_profile);
+						if (role_profiles.length) {
+							f.get_query = function () {
+								return { filters: { role_profile: ["in", role_profiles] } };
+							};
+						}
+					}
+				});
+				customFields.push({
+					label: "Approval Assignments",
+					fieldname: "approval_assignments",
+					fieldtype: "Table",
+					options: "Approval Assignment Child",
+					fields: approval_fields,
+					reqd: 1,
+				});
+			}
+		} catch (e) {
+			// proceed without approval assignments
+		}
+	}
+
+	// Action badge color
+	let color = 'secondary';
+	let ns = transition.next_state;
+	if (['Approved', 'Active', 'Completed', 'Submitted'].includes(ns)) color = 'success';
+	else if (['Pending', 'Draft', 'Open'].includes(ns)) color = 'warning';
+	else if (['Rejected', 'Cancelled'].includes(ns)) color = 'danger';
+
+	let popupFields = [
+		{
+			label: "Action",
+			fieldname: "action_html",
+			fieldtype: "HTML",
+			options: `<p>Action: <span style="padding: 4px 8px; border-radius: 100px; color:white; font-size: 12px; font-weight: 400;" class="bg-${color}">${frappe.utils.escape_html(transition.action)}</span></p>`,
+		},
+		...customFields,
+		...fields,
+	];
+
+	let dialog = new frappe.ui.Dialog({
+		title: __("Confirm"),
+		size: frappe.utils.get_dialog_size(popupFields),
+		fields: popupFields,
+		primary_action_label: __("Proceed"),
+		primary_action: (values) => {
+			frappe.dom.freeze(__("Processing..."));
+			$(dialog.get_primary_btn()).prop("disabled", true);
+			$(dialog.get_primary_btn()).html(
+				'<span style="width: 0.75rem !important; height: 0.75rem !important;" class="spinner-border spinner-border-sm"></span> ' +
+				(dialog.primary_action_label || __("Proceed"))
+			);
+
+			let updateFields = {
+				...doc,
+				...values,
+				wf_dialog_fields: { ...values },
+				doctype: doctype,
+			};
+
+			frappe.xcall("frappe.model.workflow.apply_workflow", {
+				doc: updateFields,
+				action: transition.action,
+				is_custom_transition: transition.is_custom_transition || 0,
+				is_comment_required: transition.is_comment_required || 0,
+				custom_comment: transition.is_comment_required == 1 ? (values.wf_comment || "") : "",
+			}).then(() => {
+				frappe.show_alert({
+					message: __("Action completed successfully"),
+					indicator: "green",
+				});
+				dialog.hide();
+				frappe.dom.unfreeze();
+				// Reload page to reflect new state
+				frappe.pages['response-details'].on_page_show(wrapper);
+			}).catch((err) => {
+				frappe.dom.unfreeze();
+				$(dialog.get_primary_btn()).prop("disabled", false);
+				$(dialog.get_primary_btn()).html(dialog.primary_action_label || __("Proceed"));
+			});
+		},
+		secondary_action_label: __("Cancel"),
+		secondary_action: () => {
+			dialog.hide();
+			frappe.show_alert({
+				message: __("{0} Action has been cancelled.", [transition.action]),
+				indicator: "orange",
+			});
+		},
+	});
+	dialog.show();
 }
 
 // ─── Custom Interface View ──────────────────────────────────────────
@@ -449,9 +622,9 @@ async function render_custom_interface(wrapper, page, doc, fields, form_interfac
 		.replace(/\{doc\.([^}]+)\}/g, (match, expr) => {
 			try {
 				let value = new Function('doc', 'return doc.' + expr)(resolved_doc);
-				return value !== undefined && value !== null ? value : match;
+				return value !== undefined && value !== null && value !== '' ? value : '—';
 			} catch (e) {
-				return match;
+				return '—';
 			}
 		});
 
@@ -482,7 +655,7 @@ async function render_custom_interface(wrapper, page, doc, fields, form_interfac
 			$geo.html(geo_html);
 			let coords = parse_coordinates(doc, fields);
 			if (coords) {
-				init_response_map(wrapper, coords);
+				init_geo_map(wrapper, coords);
 			}
 		}
 	}

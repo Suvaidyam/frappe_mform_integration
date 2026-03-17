@@ -6,8 +6,7 @@ frappe.query_reports["Submission Over Time"] = {
 		{
 			"fieldname": "reference_doctype",
 			"label": __("Doctype"),
-			"fieldtype": "Link",
-			"options": "DocType"
+			"fieldtype": "Data",
 		},
 	],
 };

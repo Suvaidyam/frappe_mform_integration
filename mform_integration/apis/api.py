@@ -1,12 +1,22 @@
 import frappe
 from frappe.utils import get_first_day_of_week, get_datetime, now_datetime
 
+
+@frappe.whitelist()
+def get_mform_settings():
+	try:
+		settings = frappe.get_doc("mForm Settings","mForm Settings", ignore_permissions=True)
+		return settings.as_dict()
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Error fetching mForm Settings")
+		return None
 @frappe.whitelist()
 def get_module_list(doctype):
-	names = frappe.db.get_all(
+	names = frappe.get_list(
 		doctype,
 		pluck="name",
-		order_by="creation desc"
+		order_by="creation desc",
+		limit=1000
 	)
 
 	result = []

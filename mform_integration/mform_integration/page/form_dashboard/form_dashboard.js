@@ -148,13 +148,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">
 				<div style="flex:1 1 55%;min-width:300px;" id="mform-submission-chart"></div>
 				<div class="mform-card" style="flex:1 1 35%;min-width:300px;position:relative;">
-					<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-						<div style="font-size:14px;font-weight:600;color:#1e293b;">Geographical Reach</div>
-						<button class="btn btn-xs btn-default" id="mform-geo-maximize" title="Maximize" style="padding:2px 6px;">
-							${frappe.utils.icon("expand", "sm")}
-						</button>
-					</div>
-					<div id="mform-geo-map" style="height:390px;border-radius:8px;overflow:hidden;"></div>
+					<div id="mform-geo-map"></div>
 				</div>
 			</div>
 			<div id="mform-response-list" class="px-3"></div>
@@ -237,133 +231,16 @@ function render_geo_map(doctype) {
 			}
 		});
 
-		init_map("mform-geo-map", groups, doctype);
-
-		// Maximize button
-		$("#mform-geo-maximize").on("click", () => {
-			let mapId = "mform-geo-map-max-" + Date.now();
-			let dlg = new frappe.ui.Dialog({
+		frappe.require("geo_details.bundle.js", () => {
+			new frappe.ui.GeoDetails({
+				wrapper: document.getElementById("mform-geo-map"),
+				groups: groups,
+				doctype: doctype,
 				title: "Geographical Reach",
-				fields: [
-					{
-						fieldtype: "HTML",
-						fieldname: "max_map",
-					},
-				],
+				maximizeTitle: "Geographical Reach",
+				height: 390,
+				showMaximize: true,
 			});
-			frappe.utils.make_dialog_fullscreen(dlg);
-			dlg.show();
-			dlg.fields_dict.max_map.$wrapper.html(
-				`<div id="${mapId}" style="height:calc(100vh - 100px);border-radius:8px;overflow:hidden;"></div>`
-			);
-			setTimeout(() => {
-				init_map(mapId, groups, doctype);
-			}, 200);
-			dlg.on_hide = () => {
-				if (_mform_map_instances[mapId]) {
-					_mform_map_instances[mapId].remove();
-					delete _mform_map_instances[mapId];
-				}
-			};
-		});
-	});
-}
-
-let _mform_map_instances = {};
-
-function init_map(containerId, groups, doctype) {
-	if (_mform_map_instances[containerId]) {
-		_mform_map_instances[containerId].remove();
-		delete _mform_map_instances[containerId];
-	}
-	let map = L.map(containerId, { scrollWheelZoom: true });
-	_mform_map_instances[containerId] = map;
-	L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-	}).addTo(map);
-
-	let bounds = [];
-	Object.values(groups).forEach((group) => {
-		let latlng = [group.lat, group.lng];
-		let marker = L.marker(latlng).addTo(map);
-		marker.on("click", () => {
-			show_location_dialog(group.records, doctype);
-		});
-		bounds.push(latlng);
-	});
-
-	if (bounds.length) {
-		map.fitBounds(bounds, { padding: [30, 30] });
-	}
-}
-
-function show_location_dialog(records, doctype) {
-	let names = records.map((r) => r.name);
-	let lat = records[0].latitude;
-	let lng = records[0].longitude;
-
-	let dlg = new frappe.ui.Dialog({
-		title: `${doctype} - Geographical Reach`,
-		size: "extra-large",
-		fields: [
-			{
-				fieldtype: "HTML",
-				fieldname: "location_table",
-			},
-			{
-				fieldtype: "HTML",
-				fieldname: "location_card",
-			},
-		],
-	});
-
-	dlg.fields_dict.location_card.$wrapper.html(`
-		<div style="margin-top:12px;padding:14px 18px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e3a5f;display:flex;align-items:center;gap:10px;">
-			<div style="font-size:18px;">📍</div>
-			<div>
-				<div style="font-weight:600;font-size:13px;">Location</div>
-				<div class="geo-address-text" style="font-size:12px;color:#3b6fa0;">Loading address...</div>
-			</div>
-			<div style="margin-left:auto;font-size:12px;background:#dbeafe;padding:4px 10px;border-radius:4px;color:#1d4ed8;">
-				${names.length} Record${names.length > 1 ? "s" : ""}
-			</div>
-		</div>
-	`);
-
-	// Reverse geocode to get address
-	fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
-		.then((r) => r.json())
-		.then((data) => {
-			let address = data.display_name || `${lat}, ${lng}`;
-			dlg.fields_dict.location_card.$wrapper.find(".geo-address-text").text(address);
-		})
-		.catch(() => {
-			dlg.fields_dict.location_card.$wrapper.find(".geo-address-text").text(`${lat}, ${lng}`);
-		});
-
-	dlg.show();
-
-	frappe.require("sva_datatable.bundle.js", () => {
-		new frappe.ui.SvaDataTable({
-			wrapper: dlg.fields_dict.location_table.$wrapper[0],
-			frm: {
-				is_new: () => false,
-				dt_events: {
-					[doctype]: {
-						before_load: async function (dt) {
-							dt.additional_list_filters = [
-								[doctype, "name", "IN", names],
-							];
-						},
-					},
-				},
-			},
-			doctype: doctype,
-			connection: {
-				connection_type: "Unfiltered",
-				title: "",
-				unfiltered: 1,
-				crud_permissions: '["read"]',
-			},
 		});
 	});
 }
@@ -394,7 +271,7 @@ function render_response_table(page, doctype) {
 			connection_type: "Unfiltered",
 			title: "Responses",
 			unfiltered: 1,
-			crud_permissions: '["read"]',
+			crud_permissions: JSON.stringify(["read", "write", "create", "delete"]),
 		},
 	});
 }
