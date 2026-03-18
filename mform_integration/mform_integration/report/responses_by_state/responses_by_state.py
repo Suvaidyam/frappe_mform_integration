@@ -25,25 +25,51 @@ def get_columns():
 
 def get_data(doctype):
 	meta = frappe.get_meta(doctype)
-	has_state = any(f.fieldname == "state" for f in meta.fields)
+	
+	# Find field with Link fieldtype and State options
+	state_field = None
+	for field in meta.fields:
+		if field.fieldtype == "Link" and field.options == "State":
+			state_field = field.fieldname
+			break
 
-	if not has_state:
+	if not state_field:
 		return []
 
-	table = f"`tab{doctype}`"
-	rows = frappe.db.sql(
-		f"""
-		SELECT
-			st.state_name AS state,
-			COUNT(*) AS response_count
-		FROM {table}
-		LEFT JOIN `tabState` AS st ON st.name = {table}.state
-		WHERE state IS NOT NULL AND state != ''
-		GROUP BY state
-		ORDER BY response_count DESC
-		""",
-		as_dict=True,
+	# Use frappe.get_list to fetch data with permission checks
+	records = frappe.get_list(
+		doctype,
+		fields=[state_field],
+		filters={state_field: ['!=', '']},
+		limit_page_length=None
 	)
+
+	if not records:
+		return []
+
+	# Aggregate by state in Python
+	state_map = {}
+	for record in records:
+		state = record.get(state_field)
+		if state:
+			state_map[state] = state_map.get(state, 0) + 1
+
+	# Fetch state names for display
+	states = frappe.get_list(
+		'State',
+		fields=['name', 'state_name'],
+		filters={'name': ['in', list(state_map.keys())]}
+	)
+
+	state_names = {s['name']: s['state_name'] for s in states}
+
+	# Build result with state names and convert to list sorted by count
+	rows = []
+	for state_code, count in sorted(state_map.items(), key=lambda x: x[1], reverse=True):
+		rows.append({
+			'state': state_names.get(state_code, state_code),
+			'response_count': count
+		})
 
 	return rows
 

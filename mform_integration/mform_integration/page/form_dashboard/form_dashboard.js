@@ -63,7 +63,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 		</div>
 	`);
 
-	let data = await frappe.xcall("mform_integration.apis.api.get_form_dashboard", { doctype });
+	let data = await frappe.xcall("mform_integration.apis.api.get_form_list_stats", { doctype });
 
 	$(page.body).html(`
 		<style>
@@ -148,17 +148,49 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						Active Surveyors
 					</div>
-					<div class="mform-card-count">${data.this_week}</div>
-					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
+					<div class="mform-card-count">${data.active_surveyors}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique users in last 30 days</div>
 					<div class="mform-card-icon">${frappe.utils.icon("users", "lg")}</div>
 				</div>
 				<div class="mform-card mform-card-week mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:70ms;">
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						This Week Responses
 					</div>
-					<div class="mform-card-count">${data.this_week}</div>
+					<div class="mform-card-count">${data?.this_week || '--'}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Since ${frappe.datetime.get_today()}</div>
 					<div class="mform-card-icon">${frappe.utils.icon("calendar", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-activity mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:105ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Last Activity
+					</div>
+					<div class="mform-card-count" id="stat-activity">${data?.last_activity || '-'}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Most recent submission</div>
+					<div class="mform-card-icon">${frappe.utils.icon("dashboard", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-states mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:140ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						States Reached
+					</div>
+					<div class="mform-card-count" id="stat-states">${data?.states_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique states covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("map", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-districts mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:175ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Districts Reached
+					</div>
+					<div class="mform-card-count" id="stat-districts">${data?.districts_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique districts covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("shortcut", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-blocks mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:210ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Blocks Reached
+					</div>
+					<div class="mform-card-count" id="stat-blocks">${data?.blocks_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique blocks covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("grid", "lg")}</div>
 				</div>
 			</div>
 			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">

@@ -101,8 +101,14 @@ frappe.pages['response-details'].on_page_show = async function(wrapper) {
 		page.set_indicator(doc.workflow_state, get_workflow_state_color(doc.workflow_state));
 	}
 
-	// Edit button - redirect to main form
+	// Edit button - redirect to main form with back icon
+	let return_route = frappe.get_route_str();
 	page.add_inner_button(frappe.utils.icon("edit"), () => {
+		frappe.route_hooks.after_page_load = function (frm_page) {
+			frm_page.add_inner_button(frappe.utils.icon("arrow-left"), () => {
+				frappe.set_route(return_route);
+			});
+		};
 		frappe.set_route("Form", doctype, name);
 	});
 
