@@ -29,48 +29,80 @@ def get_data(filters):
 	# Handle filter format from SvaDataTable: ["like", "%value%"]
 	if isinstance(form_search, (list, tuple)):
 		form_search = form_search[-1] if form_search else None
+		if form_search:
+			form_search = form_search.strip('%')
 
 	if not parent_doctype or not parent_docname:
 		return []
 
-	conditions = "WHERE parent = %s AND parenttype = %s"
-	values = [parent_docname, parent_doctype]
+	# Fetch parent document first to get Form Mapper child table
+	try:
+		parent_doc = frappe.get_doc(parent_doctype, parent_docname)
+	except frappe.DoesNotExistError:
+		return []
+	except Exception as e:
+		frappe.logger().error(f"Error fetching parent doc {parent_doctype}/{parent_docname}: {str(e)}")
+		return []
+
+	# Find all child table fields that contain "form" and have "form" attribute
+	forms = []
+	meta = frappe.get_meta(parent_doctype)
+	
+	for field in meta.fields:
+		if field.fieldtype == "Table":
+			child_table_name = field.options
+			# Check if this child table has a "form" field
+			child_meta = frappe.get_meta(child_table_name)
+			has_form_field = any(f.fieldname == "form" for f in child_meta.fields)
+			
+			if has_form_field and hasattr(parent_doc, field.fieldname):
+				rows = getattr(parent_doc, field.fieldname, [])
+				for row in rows:
+					if hasattr(row, "form") and row.form:
+						forms.append(row.form)
 
 	if form_search:
-		conditions += " AND form LIKE %s"
-		# Avoid double wrapping with %
-		if "%" not in str(form_search):
-			form_search = f"%{form_search}%"
-		values.append(form_search)
-
-	forms = frappe.db.sql(
-		f"""
-		SELECT form FROM `tabForm Mapper`
-		{conditions}
-		ORDER BY idx
-		""",
-		tuple(values),
-		pluck="form",
-	)
+		forms = [f for f in forms if form_search.lower() in f.lower()]
 
 	if not forms:
 		return []
 
-	# UNION ALL for exact COUNT(*) and MAX(creation) from each form table
-	union_parts = []
+	# Aggregate response counts for each form using frappe.get_list
+	stats_map = {}
 	for form_dt in forms:
-		table = f"`tab{form_dt}`"
-		escaped_name = frappe.db.escape(form_dt)
-		union_parts.append(
-			f"SELECT {escaped_name} AS form_name, "
-			f"COUNT(*) AS response_count, "
-			f"MAX(creation) AS last_response "
-			f"FROM {table}"
-		)
+		try:
+			# Check if form DocType exists
+			if not frappe.db.exists("DocType", form_dt):
+				stats_map[form_dt] = {
+					"response_count": 0,
+					"last_response": None
+				}
+				continue
 
-	stats = frappe.db.sql("\nUNION ALL\n".join(union_parts), as_dict=True)
-	stats_map = {row.form_name: row for row in stats}
+			# Get all records for this form doctype with permission checks
+			records = frappe.get_list(
+				form_dt,
+				fields=["creation"],
+				order_by="creation desc",
+				limit_page_length=None
+			)
 
+			response_count = len(records) if records else 0
+			last_response = records[0].get("creation") if records else None
+
+			stats_map[form_dt] = {
+				"response_count": response_count,
+				"last_response": last_response
+			}
+		except Exception as e:
+			# Skip forms the user doesn't have access to or if there's an error
+			frappe.logger().warning(f"Error fetching stats for form {form_dt}: {str(e)}")
+			stats_map[form_dt] = {
+				"response_count": 0,
+				"last_response": None
+			}
+
+	# Fetch DocType creation dates from system metadata
 	dt_creation = frappe.db.sql(
 		"SELECT name, creation AS created_date FROM `tabDocType` WHERE name IN %s",
 		(forms,),

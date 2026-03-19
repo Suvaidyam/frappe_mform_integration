@@ -45,6 +45,7 @@ page_js = {
 	"list-view": "public/utils.js",
 	"form-list": "public/utils.js",
 	"form-dashboard": "public/utils.js",
+	"response-details": "public/utils.js",
 }
 
 # include js in doctype views

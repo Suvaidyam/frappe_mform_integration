@@ -1,7 +1,7 @@
 // Copyright (c) 2026, tech@suvaidyam.com and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Submission Over Time"] = {
+frappe.query_reports["Responses by State"] = {
 	filters: [
 		{
 			"fieldname": "reference_doctype",

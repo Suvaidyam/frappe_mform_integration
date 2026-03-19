@@ -25,24 +25,51 @@ def get_columns():
 
 
 def get_data(doctype):
-	table = f"`tab{doctype}`"
-	rows = frappe.db.sql(
-		f"""
-		SELECT
-			YEARWEEK(creation, 1) AS week_num,
-			MIN(DATE(creation)) AS week_start,
-			COUNT(*) AS submission_count
-		FROM {table}
-		GROUP BY week_num
-		ORDER BY week_num
-		""",
-		as_dict=True,
+	# Use frappe.get_list to fetch records with permission checks
+	records = frappe.get_list(
+		doctype,
+		fields=['creation'],
+		limit_page_length=None
 	)
 
-	for row in rows:
-		# Extract ISO week number from YEARWEEK (last 2 digits)
-		week_no = int(str(row["week_num"])[-2:])
-		row["week"] = f"Week {week_no}"
+	if not records:
+		return []
+
+	# Aggregate by week in Python
+	from datetime import datetime, timedelta
+	week_map = {}
+
+	for record in records:
+		creation = record.get('creation')
+		if creation:
+			# Convert to datetime if string
+			if isinstance(creation, str):
+				creation = datetime.fromisoformat(creation)
+			
+			# Calculate year and week number (ISO 8601)
+			iso_calendar = creation.isocalendar()
+			year = iso_calendar[0]
+			week_no = iso_calendar[1]
+			week_key = (year, week_no)
+
+			# Calculate week start date (Monday)
+			week_start = creation - timedelta(days=creation.weekday())
+
+			if week_key not in week_map:
+				week_map[week_key] = {
+					'week_start': week_start.date(),
+					'count': 0
+				}
+			week_map[week_key]['count'] += 1
+
+	# Build result sorted by year and week
+	rows = []
+	for (year, week_no), data in sorted(week_map.items()):
+		rows.append({
+			'week': f"{year}-W{week_no:02d}",
+			'week_start': data['week_start'],
+			'submission_count': data['count']
+		})
 
 	return rows
 

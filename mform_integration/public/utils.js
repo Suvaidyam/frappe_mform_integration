@@ -88,6 +88,24 @@ function get_mform_breadcrumb_items(opts) {
 		return items;
 	}
 
+	if (seg === 'response-details') {
+		var name = opts && (opts.name != null) ? String(opts.name) : '';
+		if (source_doctype && source_docname) {
+			items.push({
+				route: '/app/form-list/' + encodeURIComponent(source_doctype) + '/' + encodeURIComponent(source_docname),
+				label: forms_label
+			});
+		}
+		if (doctype) {
+			var dashboard_route = '/app/form-dashboard/' + encodeURIComponent(doctype);
+			if (source_doctype) dashboard_route += '/' + encodeURIComponent(source_doctype);
+			if (source_docname) dashboard_route += '/' + encodeURIComponent(source_docname);
+			items.push({ route: dashboard_route, label: doctype });
+		}
+		items.push({ route: '/', label: name || 'Response Details' });
+		return items;
+	}
+
 	return items;
 }
 

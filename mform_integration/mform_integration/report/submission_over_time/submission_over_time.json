@@ -12,32 +12,25 @@
  "filters": [
   {
    "fieldname": "reference_doctype",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Doctype",
    "mandatory": 0,
-   "options": "Doctype",
+   "options": "",
    "wildcard_filter": 0
   }
  ],
  "idx": 1,
  "is_standard": "Yes",
  "letterhead": null,
- "modified": "2026-03-14 15:59:38.912412",
+ "modified": "2026-03-17 14:38:29.755031",
  "modified_by": "Administrator",
  "module": "Mform Integration",
  "name": "Submission Over Time",
  "owner": "Administrator",
  "prepared_report": 0,
- "ref_doctype": "DocType",
+ "ref_doctype": "mForm Settings",
  "report_name": "Submission Over Time",
  "report_type": "Script Report",
- "roles": [
-  {
-   "role": "System Manager"
-  },
-  {
-   "role": "Administrator"
-  }
- ],
+ "roles": [],
  "timeout": 0
 }

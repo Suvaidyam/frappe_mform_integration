@@ -1,3 +1,4 @@
+
 frappe.pages["form-dashboard"].on_page_load = function (wrapper) {
 	wrapper.mform_page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -20,11 +21,11 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 	let source_docname =
 		route.length > 3
 			? route
-					.slice(3)
-					.map(function (s) {
-						return decodeURIComponent(s);
-					})
-					.join("/")
+				.slice(3)
+				.map(function (s) {
+					return decodeURIComponent(s);
+				})
+				.join("/")
 			: null;
 
 	frappe.breadcrumbs.add({
@@ -62,7 +63,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 		</div>
 	`);
 
-	let data = await frappe.xcall("mform_integration.apis.api.get_form_dashboard", { doctype });
+	let data = await frappe.xcall("mform_integration.apis.api.get_form_list_stats", { doctype });
 
 	$(page.body).html(`
 		<style>
@@ -116,6 +117,22 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 				gap: 20px;
 				padding: 20px;
 			}
+			.mform-charts-row {
+				display: flex;
+				gap: 20px;
+			}
+			.mform-chart-item {
+				flex: 1 1 0%;
+				min-width: 0;
+			}
+			@media (max-width: 1068px) {
+				.mform-charts-row {
+					flex-direction: column;
+				}
+				.mform-chart-item {
+					min-width: 100%;
+				}
+			}
 		</style>
 		<div class="mform-dashboard-content" style="opacity:0;transition:opacity 0.2s ease;">
 			<div class="mform-cards-container">
@@ -131,24 +148,58 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						Active Surveyors
 					</div>
-					<div class="mform-card-count">${data.this_week}</div>
-					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">All time</div>
+					<div class="mform-card-count">${data.active_surveyors}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique users in last 30 days</div>
 					<div class="mform-card-icon">${frappe.utils.icon("users", "lg")}</div>
 				</div>
 				<div class="mform-card mform-card-week mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:70ms;">
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						This Week Responses
 					</div>
-					<div class="mform-card-count">${data.this_week}</div>
+					<div class="mform-card-count">${data?.this_week || '--'}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Since ${frappe.datetime.get_today()}</div>
 					<div class="mform-card-icon">${frappe.utils.icon("calendar", "lg")}</div>
 				</div>
+				<div class="mform-card mform-card-activity mform-card-anim" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:105ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Last Activity
+					</div>
+					<div class="mform-card-count" >${data?.last_activity || '-'}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Most recent submission</div>
+					<div class="mform-card-icon">${frappe.utils.icon("dashboard", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-states mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:140ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						States Reached
+					</div>
+					<div class="mform-card-count" >${data?.states_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique states covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("map", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-districts mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:175ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Districts Reached
+					</div>
+					<div class="mform-card-count">${data?.districts_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique districts covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("shortcut", "lg")}</div>
+				</div>
+				<div class="mform-card mform-card-blocks mform-card-anim mform-geo-card" style="opacity:0;transform:translateY(8px);transition:opacity 0.25s ease, transform 0.25s ease;transition-delay:210ms;">
+					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+						Blocks Reached
+					</div>
+					<div class="mform-card-count" >${data?.blocks_reached || 0}</div>
+					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique blocks covered</div>
+					<div class="mform-card-icon">${frappe.utils.icon("grid", "lg")}</div>
+				</div>
 			</div>
 			<div class="mform-charts-container" style="display:flex;flex-direction:column;flex-wrap:wrap;gap:20px;padding:0 20px 20px;">
-				<div style="flex:1 1 55%;min-width:300px;" id="mform-submission-chart"></div>
-				<div class="mform-card" style="flex:1 1 35%;min-width:300px;">
-					<div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:8px;">Geographical Reach</div>
-					<div id="mform-geo-map" style="height:390px;border-radius:8px;overflow:hidden;"></div>
+				<div class="mform-charts-row">
+					<div class="mform-chart-item" id="mform-submission-chart"></div>
+					<div class="mform-chart-item" id="mform-state-chart"></div>
+				</div>
+				<div class="mform-card" style="flex:1 1 35%;min-width:300px;position:relative;">
+					<div id="mform-geo-map"></div>
 				</div>
 			</div>
 			<div id="mform-response-list" class="px-3"></div>
@@ -166,42 +217,73 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 	});
 
 	render_submission_chart(doctype);
+	render_state_chart(doctype);
 	render_geo_map(doctype);
 	render_response_table(page, doctype);
 };
 
 async function render_submission_chart(doctype) {
-	frappe.require("sva_chart.bundle.js"); 
-	let charts =  document.getElementById("mform-submission-chart")
+	frappe.require("sva_chart.bundle.js");
+	let charts = document.getElementById("mform-submission-chart")
 	// if (typeof frappe.ui.SVADashboardManager === "tasdf") {
-		// 	return;
-		// }
-		let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
-			chart_name: "Submission Over Time"
-		});
-		let items = {
-			fetch_from: "Dashboard Chart",
-			...item,
-			details: item?.chart,
-			is_permitted: true,
+	// 	return;
+	// }
+	let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
+		chart_name: "Submission Over Time"
+	});
+	let items = {
+		fetch_from: "Dashboard Chart",
+		...item,
+		details: item?.chart,
+		is_permitted: true,
 
-		};
-		new frappe.ui.SVADashboardManager({
-			wrapper: charts,
-			frm: {
-				'is_new': () => false, 
-				"dt_events":{
-					"Submission Over Time":{
-						get_filters: function() {
-							return {
-								reference_doctype: doctype
-							}
+	};
+	new frappe.ui.SVADashboardManager({
+		wrapper: charts,
+		frm: {
+			'is_new': () => false,
+			"dt_events": {
+				"Submission Over Time": {
+					get_filters: function () {
+						return {
+							reference_doctype: doctype
 						}
 					}
 				}
-			},
-			charts: [items],
-		});
+			}
+		},
+		charts: [items],
+	});
+}
+
+async function render_state_chart(doctype) {
+	frappe.require("sva_chart.bundle.js");
+	let charts = document.getElementById("mform-state-chart");
+	let item = await frappe.xcall("frappe_theme.dt_api.check_chart_permissions_and_settings", {
+		chart_name: "Responses by State"
+	});
+	let items = {
+		fetch_from: "Dashboard Chart",
+		...item,
+		details: item?.chart,
+		is_permitted: true,
+	};
+	new frappe.ui.SVADashboardManager({
+		wrapper: charts,
+		frm: {
+			'is_new': () => false,
+			"dt_events": {
+				"Responses by State": {
+					get_filters: function () {
+						return {
+							reference_doctype: doctype
+						}
+					}
+				}
+			}
+		},
+		charts: [items],
+	});
 }
 
 function render_geo_map(doctype) {
@@ -214,35 +296,67 @@ function render_geo_map(doctype) {
 			$("#mform-geo-map").html('<p style="color:var(--text-muted);height: 379px;color: #6c757d;background-color: #f8f9fa;margin-top: 10px;display: flex;justify-content: center;align-items: center;">No location data</p>');
 			return;
 		}
-		let map = L.map("mform-geo-map", { scrollWheelZoom: true });
-		L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-		}).addTo(map);
-		let bounds = [];
+
+		// Group records by coordinate key
+		let groups = {};
 		result.forEach((row) => {
 			if (row.latitude && row.longitude) {
-				let latlng = [row.latitude, row.longitude];
-				L.marker(latlng).addTo(map).bindPopup(row.name || "");
-				bounds.push(latlng);
+				let key = row.latitude + "," + row.longitude;
+				if (!groups[key]) {
+					groups[key] = {
+						lat: row.latitude,
+						lng: row.longitude,
+						records: [],
+					};
+				}
+				groups[key].records.push(row);
 			}
 		});
-		if (bounds.length) {
-			map.fitBounds(bounds, { padding: [30, 30] });
-		}
+
+		frappe.require("geo_details.bundle.js", () => {
+			new frappe.ui.GeoDetails({
+				wrapper: document.getElementById("mform-geo-map"),
+				groups: groups,
+				doctype: doctype,
+				title: "Geographical Reach",
+				maximizeTitle: "Geographical Reach",
+				height: 390,
+				showMaximize: true,
+			});
+		});
 	});
 }
 
 function render_response_table(page, doctype) {
 	frappe.require("sva_datatable.bundle.js");
+	let wrapper = document.getElementById("mform-response-list");
 	page["mform_response_list"] = new frappe.ui.SvaDataTable({
-		wrapper: document.getElementById("mform-response-list"),
-		frm: {},
+		wrapper: wrapper,
+		frm: {
+			doc:{
+				docstatus: 0,
+			},
+			dt_events: {
+				[doctype]: {
+					columnEvents: {
+						"#": {
+							"click": function (element, value, column, row) {
+								let route = frappe.get_route() || [];
+								let source_doctype = route[2] || '';
+								let source_docname = route.slice(3).join('/') || '';
+								frappe.set_route("response-details", row.name, doctype, source_doctype, source_docname);
+							}
+						}
+					},
+				},
+			}
+		},
 		doctype: doctype,
 		connection: {
 			connection_type: "Unfiltered",
 			title: "Responses",
 			unfiltered: 1,
-			crud_permissions: '["read"]',
+			crud_permissions: JSON.stringify(["read", "write", "create", "delete"]),
 		},
 	});
 }
