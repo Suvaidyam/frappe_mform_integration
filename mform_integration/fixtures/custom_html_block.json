@@ -1,0 +1,14 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Custom HTML Block",
+  "html": "<div class=\"d-flex align-items-center justify-content-center \">\n  <div class=\"w-100\">\n\n    <div class=\"card  shadow-sm module-card\">\n      <div class=\"card-body d-flex align-items-center gap-3 py-3 px-4 flex-wrap\">\n\n        <!-- Icon -->\n        <div class=\"bg-light rounded-3 d-flex align-items-center justify-content-center flex-shrink-0\" style=\"width:52px; height:52px;border-radius:10px;\">\n          {frappe.utils.icon('edit')}\n        </div>\n\n        <!-- Content -->\n        <div class=\"flex-grow-1 pl-3\">\n          <div class=\"fw-bold text-dark mb-1\">{doc.programme_name}</div>\n          \n          <span class=\"badge text-secondary bg-light border fw-normal mb-2\">\n            {doc.name}\n          </span>\n\n          <p class=\"text-muted mb-0 small\">\n            Flagship preventive healthcare program improving health and well-being of mothers, children, and adolescent girls in underserved communities.\n          </p>\n        </div>\n\n        <!-- Stats -->\n        <div class=\"d-flex align-items-center gap-3 flex-shrink-0 ms-auto\">\n\n          <!-- Forms -->\n          <div class=\" border-right px-3 py-2 text-center \">\n            <div class=\"fw-bold fs-5 lh-1\">{doc.mform_form_mapper.length}</div>\n            <div class=\"text-uppercase text-muted small\">Forms</div>\n          </div>\n\n          <!-- Surveyors -->\n          <div class=\" border-right px-3 py-2 text-center \">\n            <div class=\"fw-bold fs-5 lh-1\">12</div>\n            <div class=\"text-uppercase text-muted small\">Surveyors</div>\n          </div>\n\n          <!-- Last Active -->\n          <div class=\" px-3 py-2 text-center \">\n            <div class=\"fw-bold fs-6 lh-1\">{doc.last_active}</div>\n            <div class=\"text-uppercase text-muted small\">Last Active</div>\n          </div>\n\n        </div>\n\n      </div>\n    </div>\n\n  </div>\n</div>",
+  "is_mform": 1,
+  "modified": "2026-03-19 12:56:34.411022",
+  "name": "Module View",
+  "private": 0,
+  "roles": [],
+  "script": "",
+  "style": "*{\n    box-sizing:border-box;\n}\n.module-card {\n  transition: all 0.25s ease;\n}\n\n.module-card:hover {\n  border: 1px solid #811622;\n  border-radius: 10px;\n  transform: scale(1.005); /* zoom effect */\n}"
+ }
+]
