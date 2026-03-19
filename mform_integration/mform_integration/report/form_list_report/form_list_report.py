@@ -29,6 +29,8 @@ def get_data(filters):
 	# Handle filter format from SvaDataTable: ["like", "%value%"]
 	if isinstance(form_search, (list, tuple)):
 		form_search = form_search[-1] if form_search else None
+		if form_search:
+			form_search = form_search.strip('%')
 
 	if not parent_doctype or not parent_docname:
 		return []

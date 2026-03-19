@@ -164,7 +164,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						Last Activity
 					</div>
-					<div class="mform-card-count" id="stat-activity">${data?.last_activity || '-'}</div>
+					<div class="mform-card-count" >${data?.last_activity || '-'}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Most recent submission</div>
 					<div class="mform-card-icon">${frappe.utils.icon("dashboard", "lg")}</div>
 				</div>
@@ -172,7 +172,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						States Reached
 					</div>
-					<div class="mform-card-count" id="stat-states">${data?.states_reached || 0}</div>
+					<div class="mform-card-count" >${data?.states_reached || 0}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique states covered</div>
 					<div class="mform-card-icon">${frappe.utils.icon("map", "lg")}</div>
 				</div>
@@ -180,7 +180,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						Districts Reached
 					</div>
-					<div class="mform-card-count" id="stat-districts">${data?.districts_reached || 0}</div>
+					<div class="mform-card-count">${data?.districts_reached || 0}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique districts covered</div>
 					<div class="mform-card-icon">${frappe.utils.icon("shortcut", "lg")}</div>
 				</div>
@@ -188,7 +188,7 @@ frappe.pages["form-dashboard"].on_page_show = async function (wrapper) {
 					<div style="font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
 						Blocks Reached
 					</div>
-					<div class="mform-card-count" id="stat-blocks">${data?.blocks_reached || 0}</div>
+					<div class="mform-card-count" >${data?.blocks_reached || 0}</div>
 					<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Unique blocks covered</div>
 					<div class="mform-card-icon">${frappe.utils.icon("grid", "lg")}</div>
 				</div>
@@ -333,6 +333,9 @@ function render_response_table(page, doctype) {
 	page["mform_response_list"] = new frappe.ui.SvaDataTable({
 		wrapper: wrapper,
 		frm: {
+			doc:{
+				docstatus: 0,
+			},
 			dt_events: {
 				[doctype]: {
 					columnEvents: {
