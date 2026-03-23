@@ -338,6 +338,11 @@ function render_response_table(page, doctype) {
 			},
 			dt_events: {
 				[doctype]: {
+					formatter: {
+						"#": function (value, column, row) {
+							return `<a style="text-decoration:underline;cursor:pointer;" data-docname="${row.name}">${value}</a>`;
+						}
+					},
 					columnEvents: {
 						"#": {
 							"click": function (element, value, column, row) {
